@@ -13,3 +13,15 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
+
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      enabled: true
+    metrics:
+      enabled: true

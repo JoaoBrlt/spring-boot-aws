@@ -70,6 +70,12 @@
 			<version>${springdoc.version}</version>
 		</dependency>
 
+		<!-- Spring Actuator -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
 		<!-- Spring Dev Tools -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
