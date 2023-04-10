@@ -13,7 +13,7 @@ on:
       - 'infrastructure/cloudformation/**'
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-22.04
 
     steps:
@@ -28,8 +28,14 @@ jobs:
       - name: Update the package manager
         run: python -m pip install --upgrade pip
 
+      - name: Install the YAML linter
+        run: pip install yamllint
+
+      - name: Lint the CloudFormation templates
+        run: yamllint infrastructure/cloudformation/*.yml
+
       - name: Install the CloudFormation linter
         run: pip install cfn-lint
 
-      - name: Verify the CloudFormation templates
+      - name: Validate the CloudFormation templates
         run: cfn-lint infrastructure/cloudformation/*.yml
