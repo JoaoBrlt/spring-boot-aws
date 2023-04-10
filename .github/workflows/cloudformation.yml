@@ -1,0 +1,35 @@
+name: CloudFormation
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'infrastructure/cloudformation/**'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'infrastructure/cloudformation/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout the project
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.11.2
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11.2'
+
+      - name: Update the package manager
+        run: python -m pip install --upgrade pip
+
+      - name: Install the CloudFormation linter
+        run: pip install cfn-lint
+
+      - name: Verify the CloudFormation templates
+        run: cfn-lint infrastructure/cloudformation/*.yml
