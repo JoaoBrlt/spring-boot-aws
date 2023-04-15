@@ -3,6 +3,37 @@ AWSTemplateFormatVersion: 2010-09-09
 
 Description: Creates a virtual private cloud with NAT management, with 3 layers, across 3 availability zones.
 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: General
+        Parameters:
+          - ProjectName
+          - Environment
+      - Label:
+          default: VPC
+        Parameters:
+          - VPCCidrBlock
+      - Label:
+          default: Public subnets
+        Parameters:
+          - PublicSubnet1CidrBlock
+          - PublicSubnet2CidrBlock
+          - PublicSubnet3CidrBlock
+      - Label:
+          default: Application subnets
+        Parameters:
+          - ApplicationSubnet1CidrBlock
+          - ApplicationSubnet2CidrBlock
+          - ApplicationSubnet3CidrBlock
+      - Label:
+          default: Database subnets
+        Parameters:
+          - DatabaseSubnet1CidrBlock
+          - DatabaseSubnet2CidrBlock
+          - DatabaseSubnet3CidrBlock
+
 Parameters:
 
   # ==================================== #
@@ -534,8 +565,7 @@ Resources:
     Type: AWS::EC2::RouteTable
     Condition: IsProductionEnvironment
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       Tags:
         - Key: Name
           Value: application-subnet-2-route-table
@@ -552,8 +582,7 @@ Resources:
     Type: AWS::EC2::RouteTable
     Condition: IsProductionEnvironment
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       Tags:
         - Key: Name
           Value: application-subnet-3-route-table
