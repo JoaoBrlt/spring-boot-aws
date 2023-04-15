@@ -4,14 +4,28 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Creates a virtual private cloud with NAT management, with 3 layers, across 3 availability zones.
 
 Parameters:
+
+  # ==================================== #
+  #                GENERAL               #
+  # ==================================== #
+
+  ProjectName:
+    Description: The project name.
+    Type: String
+    Default: Spring Boot AWS
+
+  Environment:
+    Description: The stack environment.
+    Type: String
+    AllowedValues:
+      - testing
+      - staging
+      - production
+    ConstraintDescription: must be testing, staging or production.
+
   # ==================================== #
   #                  VPC                 #
   # ==================================== #
-
-  VPCName:
-    Description: The name of the VPC being created.
-    Type: String
-    Default: VPC Public and Private with NAT
 
   VPCCidrBlock:
     Description: The IPv4 CIDR block assigned to the VPC.
@@ -95,6 +109,9 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid CIDR block of the form x.x.x.x/x.
 
+Conditions:
+  IsProductionEnvironment: !Equals [!Ref Environment, production]
+
 Resources:
   # ==================================== #
   #                  VPC                 #
@@ -108,12 +125,16 @@ Resources:
       EnableDnsSupport: true
       InstanceTenancy: default
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: vpc-1
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Public
-        - Key: Name
-          Value: !Ref VPCName
 
   # ==================================== #
   #           INTERNET GATEWAY           #
@@ -123,15 +144,16 @@ Resources:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: internet-gateway-1
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Public
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-IGW"
 
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -154,21 +176,20 @@ Resources:
       CidrBlock: !Ref PublicSubnet1CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: public-subnet-1
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Public
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-public-"
-              - !Select
-                - 0
-                - Fn::GetAZs: !Ref AWS::Region
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
+    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select
@@ -177,21 +198,20 @@ Resources:
       CidrBlock: !Ref PublicSubnet2CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: public-subnet-2
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Public
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-public-"
-              - !Select
-                - 1
-                - Fn::GetAZs: !Ref AWS::Region
 
   PublicSubnet3:
     Type: AWS::EC2::Subnet
+    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select
@@ -200,52 +220,120 @@ Resources:
       CidrBlock: !Ref PublicSubnet3CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: public-subnet-3
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Public
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-public-"
-              - !Select
-                - 2
-                - Fn::GetAZs: !Ref AWS::Region
 
   # NAT gateways
   ElasticIP1:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
+      Tags:
+        - Key: Name
+          Value: elastic-ip-1
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Public
 
   ElasticIP2:
     Type: AWS::EC2::EIP
+    Condition: IsProductionEnvironment
     Properties:
       Domain: vpc
+      Tags:
+        - Key: Name
+          Value: elastic-ip-2
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Public
 
   ElasticIP3:
     Type: AWS::EC2::EIP
+    Condition: IsProductionEnvironment
     Properties:
       Domain: vpc
+      Tags:
+        - Key: Name
+          Value: elastic-ip-3
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Public
 
   NATGateway1:
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId: !GetAtt ElasticIP1.AllocationId
       SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: nat-gateway-1
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Public
 
   NATGateway2:
     Type: AWS::EC2::NatGateway
+    Condition: IsProductionEnvironment
     Properties:
       AllocationId: !GetAtt ElasticIP2.AllocationId
       SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: nat-gateway-2
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Public
 
   NATGateway3:
     Type: AWS::EC2::NatGateway
+    Condition: IsProductionEnvironment
     Properties:
       AllocationId: !GetAtt ElasticIP3.AllocationId
       SubnetId: !Ref PublicSubnet3
+      Tags:
+        - Key: Name
+          Value: nat-gateway-3
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Public
 
   # Route tables
   PublicRouteTable:
@@ -253,15 +341,16 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: public-route-table-1
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Public
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-public-route-table"
 
   PublicRoute1:
     Type: AWS::EC2::Route
@@ -279,12 +368,14 @@ Resources:
 
   PublicSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
   PublicSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref PublicSubnet3
       RouteTableId: !Ref PublicRouteTable
@@ -295,15 +386,16 @@ Resources:
     Properties:
       VpcId: !Ref VPC
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: public-network-acl-1
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Public
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-public-nacl"
 
   InboundHTTPPublicNetworkAclEntry:
     Type: AWS::EC2::NetworkAclEntry
@@ -339,12 +431,14 @@ Resources:
 
   PublicSubnet2NetworkAclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
+    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref PublicSubnet2
       NetworkAclId: !Ref PublicNetworkAcl
 
   PublicSubnet3NetworkAclAssociation:
     Type: AWS::EC2::SubnetNetworkAclAssociation
+    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref PublicSubnet3
       NetworkAclId: !Ref PublicNetworkAcl
@@ -364,21 +458,20 @@ Resources:
       CidrBlock: !Ref ApplicationSubnet1CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: application-subnet-1
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Private
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-application-"
-              - !Select
-                - 0
-                - Fn::GetAZs: !Ref AWS::Region
 
   ApplicationSubnet2:
     Type: AWS::EC2::Subnet
+    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select
@@ -387,21 +480,20 @@ Resources:
       CidrBlock: !Ref ApplicationSubnet2CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: application-subnet-2
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Private
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-application-"
-              - !Select
-                - 1
-                - Fn::GetAZs: !Ref AWS::Region
 
   ApplicationSubnet3:
     Type: AWS::EC2::Subnet
+    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select
@@ -410,18 +502,16 @@ Resources:
       CidrBlock: !Ref ApplicationSubnet3CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: application-subnet-3
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Private
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-application-"
-              - !Select
-                - 2
-                - Fn::GetAZs: !Ref AWS::Region
 
   # Route tables
   ApplicationSubnet1RouteTable:
@@ -430,34 +520,51 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-application-route-table-1"
+          Value: application-subnet-1-route-table
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Private
 
   ApplicationSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: IsProductionEnvironment
     Properties:
       VpcId:
         Ref: VPC
       Tags:
         - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-application-route-table-2"
+          Value: application-subnet-2-route-table
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Private
 
   ApplicationSubnet3RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: IsProductionEnvironment
     Properties:
       VpcId:
         Ref: VPC
       Tags:
         - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-application-route-table-3"
+          Value: application-subnet-3-route-table
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Private
 
   ApplicationSubnet1Route1:
     Type: AWS::EC2::Route
@@ -468,6 +575,7 @@ Resources:
 
   ApplicationSubnet2Route1:
     Type: AWS::EC2::Route
+    Condition: IsProductionEnvironment
     Properties:
       RouteTableId: !Ref ApplicationSubnet2RouteTable
       DestinationCidrBlock: 0.0.0.0/0
@@ -475,6 +583,7 @@ Resources:
 
   ApplicationSubnet3Route1:
     Type: AWS::EC2::Route
+    Condition: IsProductionEnvironment
     Properties:
       RouteTableId: !Ref ApplicationSubnet3RouteTable
       DestinationCidrBlock: 0.0.0.0/0
@@ -488,12 +597,14 @@ Resources:
 
   ApplicationSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref ApplicationSubnet2
       RouteTableId: !Ref ApplicationSubnet2RouteTable
 
   ApplicationSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref ApplicationSubnet3
       RouteTableId: !Ref ApplicationSubnet3RouteTable
@@ -513,21 +624,20 @@ Resources:
       CidrBlock: !Ref DatabaseSubnet1CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: database-subnet-1
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Private
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-database-"
-              - !Select
-                - 0
-                - Fn::GetAZs: !Ref AWS::Region
 
   DatabaseSubnet2:
     Type: AWS::EC2::Subnet
+    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select
@@ -536,21 +646,20 @@ Resources:
       CidrBlock: !Ref DatabaseSubnet2CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: database-subnet-2
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Private
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-database-"
-              - !Select
-                - 1
-                - Fn::GetAZs: !Ref AWS::Region
 
   DatabaseSubnet3:
     Type: AWS::EC2::Subnet
+    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select
@@ -559,18 +668,16 @@ Resources:
       CidrBlock: !Ref DatabaseSubnet3CidrBlock
       MapPublicIpOnLaunch: false
       Tags:
-        - Key: Application
-          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: database-subnet-3
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
         - Key: Network
           Value: Private
-        - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-database-"
-              - !Select
-                - 2
-                - Fn::GetAZs: !Ref AWS::Region
 
   # Route tables
   DatabaseSubnet1RouteTable:
@@ -579,34 +686,49 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-database-route-table-1"
+          Value: database-subnet-1-route-table
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Private
 
   DatabaseSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: IsProductionEnvironment
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-database-route-table-2"
+          Value: database-subnet-2-route-table
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Private
 
   DatabaseSubnet3RouteTable:
     Type: AWS::EC2::RouteTable
+    Condition: IsProductionEnvironment
     Properties:
-      VpcId:
-        Ref: VPC
+      VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Join
-            - ""
-            - - !Ref VPCName
-              - "-database-route-table-3"
+          Value: database-subnet-3-route-table
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Region
+          Value: !Ref AWS::Region
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Private
 
   DatabaseSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -616,12 +738,14 @@ Resources:
 
   DatabaseSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref DatabaseSubnet2
       RouteTableId: !Ref DatabaseSubnet2RouteTable
 
   DatabaseSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref DatabaseSubnet3
       RouteTableId: !Ref DatabaseSubnet3RouteTable
@@ -641,12 +765,14 @@ Outputs:
 
   PublicSubnet2Id:
     Description: The identifier of the public subnet 2
+    Condition: IsProductionEnvironment
     Value: !Ref PublicSubnet2
     Export:
       Name: !Sub ${AWS::Region}-${AWS::StackName}-PublicSubnet2
 
   PublicSubnet3Id:
     Description: The identifier of the public subnet 3
+    Condition: IsProductionEnvironment
     Value: !Ref PublicSubnet3
     Export:
       Name: !Sub ${AWS::Region}-${AWS::StackName}-PublicSubnet3
@@ -659,12 +785,14 @@ Outputs:
 
   ApplicationSubnet2Id:
     Description: The identifier of the application subnet 2
+    Condition: IsProductionEnvironment
     Value: !Ref ApplicationSubnet2
     Export:
       Name: !Sub ${AWS::Region}-${AWS::StackName}-ApplicationSubnet2
 
   ApplicationSubnet3Id:
     Description: The identifier of the application subnet 3
+    Condition: IsProductionEnvironment
     Value: !Ref ApplicationSubnet3
     Export:
       Name: !Sub ${AWS::Region}-${AWS::StackName}-ApplicationSubnet3
@@ -677,12 +805,14 @@ Outputs:
 
   DatabaseSubnet2Id:
     Description: The identifier of the database subnet 2
+    Condition: IsProductionEnvironment
     Value: !Ref DatabaseSubnet2
     Export:
       Name: !Sub ${AWS::Region}-${AWS::StackName}-DatabaseSubnet2
 
   DatabaseSubnet3Id:
     Description: The identifier of the database subnet 3
+    Condition: IsProductionEnvironment
     Value: !Ref DatabaseSubnet3
     Export:
       Name: !Sub ${AWS::Region}-${AWS::StackName}-DatabaseSubnet3
