@@ -1,20 +1,38 @@
 name: Server
 
 on:
+  # Manual trigger.
+  workflow_dispatch:
+
+  # When a commit is pushed.
   push:
-    branches:
-      - master
     paths:
       - 'application/server/**'
+
+  # When activity on a pull request occurs.
   pull_request:
-    branches:
-      - master
     paths:
       - 'application/server/**'
 
 jobs:
   build:
+    name: Build
     runs-on: ubuntu-22.04
+
+    services:
+      database:
+        image: postgres:15.2-alpine3.17
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: database
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
       - name: Checkout the project
@@ -27,6 +45,6 @@ jobs:
           java-version: '17.0.6+10'
           cache: 'maven'
 
-      - name: Build the project
-        run: mvn --batch-mode --update-snapshots package -DskipTests
+      - name: Build the application
+        run: mvn --batch-mode --update-snapshots clean package
         working-directory: application/server

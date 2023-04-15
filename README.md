@@ -17,7 +17,7 @@ mvn clean package
 > **Note:**
 > You can use the `-DskipTests` option to skip the tests.
 
-## Run with Docker
+## Run with Docker Compose
 
 - Navigate to the Docker folder:
 ```bash
@@ -35,8 +35,8 @@ docker-compose up
 > **Note:**
 > You can use the `-d` or `--detach` option to run the application in the background.
 
-- The server will be available at http://localhost:8080
-- The server documentation will be available at http://localhost:8080/swagger-ui/index.html
+- The server is available at http://localhost:8080
+- The server documentation is available at http://localhost:8080/swagger-ui/index.html
 
 - Stop the application:
 ```bash

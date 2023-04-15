@@ -1,32 +1,32 @@
 name: CloudFormation
 
 on:
+  # Manual trigger.
+  workflow_dispatch:
+
+  # When a commit is pushed.
   push:
-    branches:
-      - master
     paths:
       - 'infrastructure/cloudformation/**'
+
+  # When activity on a pull request occurs.
   pull_request:
-    branches:
-      - master
     paths:
       - 'infrastructure/cloudformation/**'
 
 jobs:
   lint:
+    name: Lint
     runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout the project
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.11.2
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11.2'
-
-      - name: Update the package manager
-        run: python -m pip install --upgrade pip
 
       - name: Install the YAML linter
         run: pip install yamllint
@@ -34,8 +34,42 @@ jobs:
       - name: Lint the CloudFormation templates
         run: yamllint infrastructure/cloudformation/*.yml
 
+  validate:
+    name: Validate
+    needs: lint
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout the project
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11.2'
+
       - name: Install the CloudFormation linter
         run: pip install cfn-lint
 
       - name: Validate the CloudFormation templates
         run: cfn-lint infrastructure/cloudformation/*.yml
+
+  scan:
+    name: Scan
+    needs: validate
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout the project
+        uses: actions/checkout@v3
+
+      - name: Set up Ruby 3.2
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2.2'
+
+      - name: Install the CloudFormation security linter
+        run: gem install cfn-nag
+
+      - name: Scan the CloudFormation template for security issues
+        run: cfn_nag_scan --input-path infrastructure/cloudformation/
