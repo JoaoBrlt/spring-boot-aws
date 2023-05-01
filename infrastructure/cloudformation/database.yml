@@ -1,0 +1,336 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Creates an Aurora PostgreSQL cluster with high availability and disaster recovery.
+
+# ============================================================================ #
+#                                  PARAMETERS                                  #
+# ============================================================================ #
+
+Parameters:
+  # ==================================== #
+  #                GENERAL               #
+  # ==================================== #
+
+  ApplicationName:
+    Description: The application name.
+    Type: String
+    Default: Spring Boot AWS
+
+  Environment:
+    Description: The stack environment.
+    Type: String
+    Default: staging
+    AllowedValues:
+      - testing
+      - staging
+      - production
+    ConstraintDescription: must be testing, staging or production.
+
+  NetworkStackName:
+    Description: The name of the network stack.
+    Type: String
+    MinLength: 1
+    MaxLength: 128
+    AllowedPattern: ^[a-zA-Z]+[0-9a-zA-Z\-]*$
+    ConstraintDescription: must be a valid stack name.
+
+  ApplicationStackName:
+    Description: The name of the application stack.
+    Type: String
+    MinLength: 1
+    MaxLength: 128
+    AllowedPattern: ^[a-zA-Z]+[0-9a-zA-Z\-]*$
+    ConstraintDescription: must be a valid stack name.
+
+  # ==================================== #
+  #               DATABASE               #
+  # ==================================== #
+
+  DatabaseName:
+    Description: The name of the database.
+    Type: String
+    MinLength: 1
+    MaxLength: 64
+    AllowedPattern: ^[a-zA-Z]+[0-9a-zA-Z_]*$
+    ConstraintDescription: >
+      must start with a letter,
+      contain only alphanumeric characters (or underscores),
+      and have up to 64 characters.
+
+  DatabasePort:
+    Description: The port number on which the database accepts connections.
+    Type: Number
+    Default: 5432
+    MinValue: 1150
+    MaxValue: 65535
+    ConstraintDescription: must be in the range [1150-65535].
+
+  DatabaseUser:
+    Description: The master user name of the database.
+    Type: String
+    MinLength: 1
+    MaxLength: 16
+    AllowedPattern: ^[a-zA-Z]+[0-9a-zA-Z_]*$
+    ConstraintDescription: >
+      must start with a letter,
+      contain only alphanumeric characters (or underscores),
+      and have up to 16 characters.
+
+  DatabasePassword:
+    NoEcho: true
+    Description: The master password of the database.
+    Type: String
+    MinLength: 12
+    MaxLength: 99
+    AllowedPattern: ^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$^&*()_-]).+$
+    ConstraintDescription: >
+      must contain a number, a lowercase letter, an uppercase letter, a special character (! @ # $ ^ & * ( ) _ -),
+      and be between 12 and 99 characters long.
+
+  DatabaseEngineVersion:
+    Description: The version number of the database engine.
+    Type: String
+    AllowedValues:
+      - 12.14
+      - 13.10
+      - 14.7
+      - 15.2
+    Default: 14.7
+
+  DatabaseInstanceClass:
+    Description: The compute and memory capacity of the database instances.
+    Type: String
+    AllowedValues:
+      - db.t4g.micro
+      - db.t4g.small
+      - db.t4g.medium
+      - db.t4g.large
+      - db.t4g.xlarge
+      - db.t4g.2xlarge
+    Default: db.t4g.micro
+
+  DatabaseDeletionProtection:
+    Description: Whether to enable deletion protection on the database cluster.
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: false
+
+  DatabaseAllowMajorVersionUpgrade:
+    Description: >
+      Whether to allow major version upgrades to the database instances.
+      Turn this on when you want to perform a major version upgrade.
+    Type: String
+    AllowedValues:
+      - true
+      - false
+    Default: false
+
+  DatabaseSnapshotIdentifier:
+    Description: >
+      Optional.
+      The identifier of the database snapshot to restore from.
+      Leave this blank if you are not restoring from a snapshot.
+    Type: String
+    Default: ""
+
+# ============================================================================ #
+#                               PARAMETER GROUPS                               #
+# ============================================================================ #
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: General
+        Parameters:
+          - ApplicationName
+          - Environment
+          - NetworkStackName
+          - ApplicationStackName
+      - Label:
+          default: Database
+        Parameters:
+          - DatabaseName
+          - DatabasePort
+          - DatabaseUser
+          - DatabasePassword
+          - DatabaseEngineVersion
+          - DatabaseInstanceClass
+          - DatabaseDeletionProtection
+          - DatabaseAllowMajorVersionUpgrade
+          - DatabaseSnapshotIdentifier
+
+# ============================================================================ #
+#                                   MAPPINGS                                   #
+# ============================================================================ #
+
+Mappings:
+  DatabaseEngineVersionMap:
+    "12.14":
+      family: aurora-postgresql12
+    "13.10":
+      family: aurora-postgresql13
+    "14.7":
+      family: aurora-postgresql14
+    "15.2":
+      family: aurora-postgresql15
+
+# ============================================================================ #
+#                                  CONDITIONS                                  #
+# ============================================================================ #
+
+Conditions:
+  IsProductionEnvironment: !Equals [!Ref Environment, production]
+  IsSnapshotDefined: !Not [!Equals [!Ref DatabaseSnapshotIdentifier, ""]]
+
+# ============================================================================ #
+#                                   RESOURCES                                  #
+# ============================================================================ #
+
+Resources:
+  DatabaseMonitoringRole:
+    Type: AWS::IAM::Role
+    Condition: IsProductionEnvironment
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - monitoring.rds.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Database - Subnet Group.
+      SubnetIds:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-DatabaseSubnet1
+        - Fn::ImportValue: !Sub ${NetworkStackName}-DatabaseSubnet2
+        - Fn::ImportValue: !Sub ${NetworkStackName}-DatabaseSubnet3
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Database - Security group.
+      VpcId:
+        Fn::ImportValue: !Sub ${NetworkStackName}-VPC
+      SecurityGroupIngress:
+        - Description: Allow traffic from application instances.
+          SourceSecurityGroupId:
+            Fn::ImportValue: !Sub ${ApplicationStackName}-AutoScalingGroupSecurityGroup
+          IpProtocol: tcp
+          FromPort: !Ref DatabasePort
+          ToPort: !Ref DatabasePort
+      Tags:
+        - Key: Name
+          Value: Database Cluster - Security group
+
+  DatabaseClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      Description: Database Cluster - Parameter Group.
+      Family: !FindInMap [DatabaseEngineVersionMap, !Ref DatabaseEngineVersion, family]
+      Parameters:
+        rds.force_ssl: 1
+
+  DatabaseParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Database - Parameter Group.
+      Family: !FindInMap [DatabaseEngineVersionMap, !Ref DatabaseEngineVersion, family]
+      Parameters: {}
+
+  DatabaseCluster:
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: aurora-postgresql
+      EngineVersion: !Ref DatabaseEngineVersion
+      DatabaseName: !If [IsSnapshotDefined, !Ref AWS::NoValue, !Ref DatabaseName]
+      MasterUsername: !If [IsSnapshotDefined, !Ref AWS::NoValue, !Ref DatabaseUser]
+      MasterUserPassword: !If [IsSnapshotDefined, !Ref AWS::NoValue, !Ref DatabasePassword]
+      Port: !Ref DatabasePort
+      DBClusterParameterGroupName: !Ref DatabaseClusterParameterGroup
+      CopyTagsToSnapshot: true
+      DeletionProtection: !Ref DatabaseDeletionProtection
+      SnapshotIdentifier: !If [IsSnapshotDefined, !Ref DatabaseSnapshotIdentifier, !Ref AWS::NoValue]
+      StorageEncrypted: !If [IsSnapshotDefined, !Ref AWS::NoValue, true]
+      BackupRetentionPeriod: !If [IsProductionEnvironment, 31, 7]
+      PreferredBackupWindow: Mon:06:00-Mon:07:00  # UTC
+      PreferredMaintenanceWindow: Mon:07:00-Mon:08:00  # UTC
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref DatabaseSecurityGroup
+      EnableCloudwatchLogsExports:
+        - postgresql
+      Tags:
+        - Key: Name
+          Value: Database Cluster
+        - Key: Application
+          Value: !Ref ApplicationName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Database
+
+  # Writer instance (primary)
+  DatabaseInstance1:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref DatabaseCluster
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      Engine: aurora-postgresql
+      DBParameterGroupName: !Ref DatabaseParameterGroup
+      PubliclyAccessible: false
+      AutoMinorVersionUpgrade: true
+      AllowMajorVersionUpgrade: !Ref DatabaseAllowMajorVersionUpgrade
+      MonitoringInterval: !If [IsProductionEnvironment, 60, 0]
+      MonitoringRoleArn: !If [IsProductionEnvironment, !GetAtt DatabaseMonitoringRole.Arn, !Ref AWS::NoValue]
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: !If [IsProductionEnvironment, 31, 7]
+      Tags:
+        - Key: Name
+          Value: Database Instance 1
+        - Key: Application
+          Value: !Ref ApplicationName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Database
+
+  # Reader instance (replica and failover)
+  DatabaseInstance2:
+    Type: AWS::RDS::DBInstance
+    Condition: IsProductionEnvironment
+    DependsOn: DatabaseInstance1
+    Properties:
+      DBClusterIdentifier: !Ref DatabaseCluster
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      Engine: aurora-postgresql
+      DBParameterGroupName: !Ref DatabaseParameterGroup
+      PubliclyAccessible: false
+      AutoMinorVersionUpgrade: true
+      AllowMajorVersionUpgrade: !Ref DatabaseAllowMajorVersionUpgrade
+      MonitoringInterval: !If [IsProductionEnvironment, 60, 0]
+      MonitoringRoleArn: !If [IsProductionEnvironment, !GetAtt DatabaseMonitoringRole.Arn, !Ref AWS::NoValue]
+      EnablePerformanceInsights: true
+      PerformanceInsightsRetentionPeriod: !If [IsProductionEnvironment, 31, 7]
+      Tags:
+        - Key: Name
+          Value: Database Instance 2
+        - Key: Application
+          Value: !Ref ApplicationName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Network
+          Value: Database
