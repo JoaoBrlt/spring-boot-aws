@@ -225,11 +225,17 @@ Resources:
         Fn::ImportValue: !Sub ${NetworkStackName}-VPC
       SecurityGroupIngress:
         - Description: Allow traffic from application instances.
-          SourceSecurityGroupId:
-            Fn::ImportValue: !Sub ${ApplicationStackName}-AutoScalingGroupSecurityGroup
           IpProtocol: tcp
           FromPort: !Ref DatabasePort
           ToPort: !Ref DatabasePort
+          SourceSecurityGroupId:
+            Fn::ImportValue: !Sub ${ApplicationStackName}-AutoScalingGroupSecurityGroup
+      SecurityGroupEgress:
+        - Description: Allow all outbound traffic.
+          IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: Database Cluster - Security group
@@ -264,7 +270,7 @@ Resources:
       CopyTagsToSnapshot: true
       DeletionProtection: !Ref DatabaseDeletionProtection
       SnapshotIdentifier: !If [IsSnapshotDefined, !Ref DatabaseSnapshotIdentifier, !Ref AWS::NoValue]
-      StorageEncrypted: !If [IsSnapshotDefined, !Ref AWS::NoValue, true]
+      StorageEncrypted: true
       BackupRetentionPeriod: !If [IsProductionEnvironment, 31, 7]
       PreferredBackupWindow: Mon:06:00-Mon:07:00  # UTC
       PreferredMaintenanceWindow: Mon:07:00-Mon:08:00  # UTC
