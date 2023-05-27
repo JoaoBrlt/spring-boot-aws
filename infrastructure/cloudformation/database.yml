@@ -35,14 +35,6 @@ Parameters:
     AllowedPattern: ^[a-zA-Z]+[0-9a-zA-Z\-]*$
     ConstraintDescription: must be a valid stack name.
 
-  ApplicationStackName:
-    Description: The name of the application stack.
-    Type: String
-    MinLength: 1
-    MaxLength: 128
-    AllowedPattern: ^[a-zA-Z]+[0-9a-zA-Z\-]*$
-    ConstraintDescription: must be a valid stack name.
-
   # ==================================== #
   #               DATABASE               #
   # ==================================== #
@@ -149,7 +141,6 @@ Metadata:
           - ApplicationName
           - Environment
           - NetworkStackName
-          - ApplicationStackName
       - Label:
           default: Database
         Parameters:
@@ -223,19 +214,10 @@ Resources:
       GroupDescription: Database - Security group.
       VpcId:
         Fn::ImportValue: !Sub ${NetworkStackName}-VPC
-      SecurityGroupIngress:
-        - Description: Allow traffic from application instances.
-          IpProtocol: tcp
-          FromPort: !Ref DatabasePort
-          ToPort: !Ref DatabasePort
-          SourceSecurityGroupId:
-            Fn::ImportValue: !Sub ${ApplicationStackName}-AutoScalingGroupSecurityGroup
       SecurityGroupEgress:
-        - Description: Allow all outbound traffic.
+        - Description: Deny all outbound traffic.
           IpProtocol: -1
-          FromPort: 0
-          ToPort: 0
-          CidrIp: 0.0.0.0/0
+          CidrIp: 127.0.0.1/32
       Tags:
         - Key: Name
           Value: Database Cluster - Security group
@@ -340,3 +322,44 @@ Resources:
           Value: !Ref Environment
         - Key: Network
           Value: Database
+
+# ============================================================================ #
+#                                    OUTPUTS                                   #
+# ============================================================================ #
+
+Outputs:
+  DatabaseEndpoint:
+    Description: The connection endpoint for the database cluster.
+    Value: !GetAtt DatabaseCluster.Endpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseEndpoint
+
+  DatabaseReaderEndpoint:
+    Description: The reader endpoint for the database cluster.
+    Value: !GetAtt DatabaseCluster.ReadEndpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseReaderEndpoint
+
+  DatabasePort:
+    Description: The port number on which the database accepts connections.
+    Value: !Ref DatabasePort
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabasePort
+
+  DatabaseUser:
+    Description: The master user name of the database.
+    Value: !Ref DatabaseUser
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseUser
+
+  DatabaseName:
+    Description: The name of the database.
+    Value: !Ref DatabaseName
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseName
+
+  DatabaseSecurityGroupId:
+    Description: The identifier of the database security group
+    Value: !Ref DatabaseSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-DatabaseSecurityGroup

@@ -8,7 +8,7 @@ The network CloudFormation template takes care of the following:
 
 - Sets up a [Virtual Private Cloud](https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html) (VPC)
 across 3 [Availability Zones](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html)
-(AZ) on production environments to guarantee high availability and disaster recovery. For non-production environments,
+(AZ) for production environments to guarantee high availability and disaster recovery. For non-production environments,
 the template uses a single availability zone to save on costs.
 - Creates and associates an [Internet Gateway](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Internet_Gateway.html)
 to the VPC. The internet gateway allows communication between the VPC and the internet.
