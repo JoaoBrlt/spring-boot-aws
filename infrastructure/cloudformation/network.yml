@@ -642,7 +642,6 @@ Resources:
 
   DatabaseSubnet2:
     Type: AWS::EC2::Subnet
-    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select
@@ -662,7 +661,6 @@ Resources:
 
   DatabaseSubnet3:
     Type: AWS::EC2::Subnet
-    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Select
@@ -697,7 +695,6 @@ Resources:
 
   DatabaseSubnet2RouteTable:
     Type: AWS::EC2::RouteTable
-    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -712,7 +709,6 @@ Resources:
 
   DatabaseSubnet3RouteTable:
     Type: AWS::EC2::RouteTable
-    Condition: IsProductionEnvironment
     Properties:
       VpcId: !Ref VPC
       Tags:
@@ -733,14 +729,12 @@ Resources:
 
   DatabaseSubnet2RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref DatabaseSubnet2
       RouteTableId: !Ref DatabaseSubnet2RouteTable
 
   DatabaseSubnet3RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
-    Condition: IsProductionEnvironment
     Properties:
       SubnetId: !Ref DatabaseSubnet3
       RouteTableId: !Ref DatabaseSubnet3RouteTable
@@ -804,14 +798,12 @@ Outputs:
 
   DatabaseSubnet2Id:
     Description: The identifier of the database subnet 2
-    Condition: IsProductionEnvironment
     Value: !Ref DatabaseSubnet2
     Export:
       Name: !Sub ${AWS::StackName}-DatabaseSubnet2
 
   DatabaseSubnet3Id:
     Description: The identifier of the database subnet 3
-    Condition: IsProductionEnvironment
     Value: !Ref DatabaseSubnet3
     Export:
       Name: !Sub ${AWS::StackName}-DatabaseSubnet3

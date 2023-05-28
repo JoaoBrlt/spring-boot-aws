@@ -254,7 +254,7 @@ Resources:
       SnapshotIdentifier: !If [IsSnapshotDefined, !Ref DatabaseSnapshotIdentifier, !Ref AWS::NoValue]
       StorageEncrypted: true
       BackupRetentionPeriod: !If [IsProductionEnvironment, 31, 7]
-      PreferredBackupWindow: Mon:06:00-Mon:07:00  # UTC
+      PreferredBackupWindow: 06:00-07:00  # UTC
       PreferredMaintenanceWindow: Mon:07:00-Mon:08:00  # UTC
       DBSubnetGroupName: !Ref DatabaseSubnetGroup
       VpcSecurityGroupIds:
